@@ -347,4 +347,52 @@ class JoinTest extends AsyncTest[RelationalTestDB] {
       q2.result.map(_.toSet shouldBe Set(Some(4), Some(5)))
     )
   }
+
+  def testTupleQueryAggregation = {
+    class A(tag: Tag) extends Table[Int](tag, "a_join") {
+      def id = column[Int]("id")
+      def * = id
+    }
+    lazy val as = TableQuery[A]
+
+    class B(tag: Tag) extends Table[Int](tag, "b_join") {
+      def id = column[Int]("id")
+      def * = id
+    }
+    lazy val bs = TableQuery[B]
+
+    class C(tag: Tag) extends Table[Int](tag, "c_join") {
+      def id = column[Int]("id")
+      def * = id
+    }
+    lazy val cs = TableQuery[C]
+
+    class D(tag: Tag) extends Table[Int](tag, "d_join") {
+      def id = column[Int]("id")
+      def * = id
+    }
+    lazy val ds = TableQuery[D]
+
+
+    def query1(id: Rep[Int]) = for {
+      a <- as if a.id === id
+      b <- bs if a.id === b.id
+    } yield (a,b)
+
+
+    val query2 = for {
+      d <- ds
+      (a, b) <- query1(d.id)
+      c <- cs
+    } yield (a, b, c, d)
+
+    DBIO.seq(
+      (as.schema ++ bs.schema ++ cs.schema ++ ds.schema).create,
+      as ++= Seq(1),
+      bs ++= Seq(1),
+      cs ++= Seq(1),
+      ds ++= Seq(1),
+      query2.result.map(_ shouldBe Seq((1,1,1,1)))
+    )
+  }
 }
